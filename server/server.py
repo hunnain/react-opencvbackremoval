@@ -9,6 +9,7 @@ from PIL import Image
 from distutils.dir_util import copy_tree
 
 
+
 app = Flask(__name__, static_folder="../client/dist", template_folder="../client", )
 # SESSION_TYPE = 'redis'
 app.config.from_object(__name__)
@@ -38,54 +39,37 @@ def index():
 # Image Upload
 @app.route("/upload", methods=["POST"])
 def upload():
-    # list to hold our uploaded image urls
-    # set session for image results
-    if "file_urls" not in session:
-        session['file_urls'] = []
-    # list to hold our uploaded image urls
-    file_urls = session['file_urls']
     if request.method == 'POST':
         file_obj = request.files
         for f in file_obj:
             file = request.files.get(f)
-            # save the file with to our photos folder
             filename = photos.save(
                 file,
                 name=file.filename    
             )
-            # append image urls
-            file_urls.append(photos.url(filename))
-            session['file_urls'] = file_urls
-            # print ("Files",file)
-            file_urls = session['file_urls']
     return "Loading"
 
 # Process Image by OpenCV when Images Upload
-@app.route("/processImage",methods=["POST","GET"])
+@app.route("/processImage",methods=["GET"])
 def processImage():
-    file_urls = session['file_urls']
-    if file_urls:
-        cmd = ["python", "removebkg.py"]
-        p = subprocess.Popen(cmd, stdout = subprocess.PIPE,
+    cmd = ["python", "removebkg.py"]
+    p = subprocess.Popen(cmd, stdout = subprocess.PIPE,
                             stderr=subprocess.PIPE,
                             stdin=subprocess.PIPE)
-        out,err = p.communicate()
-        folder = './uploads'
-        originalIMages = "../client/dist/outputImages/originalImages"
-        copy_tree(folder, originalIMages)
-        for the_file in os.listdir(folder):
-            file_path = os.path.join(folder, the_file)
-            print("DIR",the_file)
-            try:
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)
+    out,err = p.communicate()
+    folder = './uploads'
+    originalIMages = "../client/dist/outputImages/originalImages"
+    copy_tree(folder, originalIMages)
+    for the_file in os.listdir(folder):
+        file_path = os.path.join(folder, the_file)
+        print("DIR",the_file)
+        try:
+            if os.path.isfile(file_path):
+                os.unlink(file_path)
                     #elif os.path.isdir(file_path): shutil.rmtree(file_path)
-            except Exception as e:
+        except Exception as e:
                 print(e)
-        return "Data Processed"
-    else:
-        return "Something Went Wrong"            
-    return "Process"
+    return "Data Processed"            
 
 # Read Image file from Client Dist outputImages Directory
 
