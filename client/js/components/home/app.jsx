@@ -88,94 +88,11 @@ class App extends Component {
         const file = this.state.files
         // console.log("My console", file[0].file)
     }
-    // ComponentWil Mount
-    componentWillMount() {
-        axios.get("/getoutputimages").then((res) => {
-            let outputImage = res.data
-            console.log("Output Dtass", outputImage)
-            this.setState({
-                outputImages: outputImage[0],
-                loading: false,
-                dialogOpen: false,
-                originalIMages: outputImage[1],
-            })
-            var myarray = [];
-            // for(let value in outputImage){
-            //     for(let val in outputImage){
-            //         let check = Object.values(outputImage[val])
-            //         // console.log("Checks",check.images)
-            //         let original = check[value] 
-            //         // console.log("Checks",original.images)
-            //         var myobj = {
-            //             original : original.originalimages,
-            //             output : original.images
-            //         }
-            //         console.log('checkss',myobj)
-            //         myarray.push(original)
-            //     }
-            // }
-            // console.log('mY final array',myarray)
-            // myarray.map((val,key)=>{
-            //     console.log("My map  va;",val)
-            // })
-            // outputImage[1].map((val,key)=>{
-            //     console.log("My 1 obj assign",val.originalimages)
-            //     let originalimages = val.originalimages
-            //     let originalratio = val.originalratio 
-            //     this.state.outputImages.map(function(el) {
-            //         const object2 = Object.assign({
-            //             c: 3,
-            //             d: originalimages
-            //           });
-            //           console.log("OBJECT2",object2)
-            //          this.state.checking = originalimages
-            //         // var o = Object.assign({}, el);
-            //         // o.originalimages = originalimages;
-            //         // o.originalratio = originalratio
-            //       })
-            //       console.log('Stateee',this.state)
-            // })
-//             var a = ["a","b","c"],
-//     b = ["A","B","C"],
-//     c = [1,2,3],
-//     output = "",
-//     i;
-// for (i = 0; i < a.length; i += 1) {
-//     output += a[i] + b[i] + c[i] + "\n";
-//     console.log('Outputs',output)
-// }
-             var outputimage = outputImage[0]
-             var originalimage = outputImage[1]
-             var output = undefined
-            for (var a = 0; a < outputimage.length; a += 1){
-                // output += outputImage[a].images + originalimage[a] 
-                console.log("OUTPUTA",outputImage[a].images,'Other',originalimage[a])
-            }
-            console.log('HELLLLLO',this.state.checking)
-            // for(let value in outputImage){
-            //     console.log('ALLLLL vall', outputImage[value].images)
-            //     // outputImage[value].map((val,key)=>{
-            //     //    console.log("My loop values",val.images)
-            //     // })
-            // }
-            // console.log("Output nnn",outputImage[0],'Other nn',outputImage[1])
-            // outputImage.map((val,key)=>{
-            //     console.log("Valssssssssue",val)
-                // val.map((val,key)=>{
-                //     var outputAndOriginalImage = {
-                //         images : val.images,
-                //         orignalImage : val.originalimages
-                //     }
-                //     console.log("OutandInput Image mix",outputAndOriginalImage)
-                // })
-            // })
-        })
-    }
     // ComponentDidmount 
     componentDidMount() {
         axios.get("/getoutputimages").then((res) => {
             let outputImage = res.data
-            console.log("Output Dta", outputImage)
+            console.log("Output Dta didmount", outputImage)
             this.setState({
                 outputImages: outputImage[0],
                 loading: false,
@@ -216,6 +133,26 @@ class App extends Component {
                     this.setState({
                         loading: true
                     })
+                    axios.get("/processImage").then((res) => {
+                        this.setState({
+                            files: []
+                        })
+                        var data = res.data
+                        if (data) {
+                            axios.get("/getoutputimages").then((res) => {
+                                let outputImage = res.data
+                                console.log("Output Dta", outputImage)
+                                this.setState({
+                                    outputImages: outputImage[0],
+                                    loading: false,
+                                    originalIMages: outputImage[1],
+                                })
+                            })
+                        }
+                        else {
+                            console.log('Something Went Wrong')
+                        }
+                    })
                 } else {
                     this.setState({
                         loading: false
@@ -223,27 +160,6 @@ class App extends Component {
                 }
             })
         });
-        // Process Images
-        axios.get("/processImage").then((res) => {
-            this.setState({
-                files: []
-            })
-            var data = res.data
-            if (data) {
-                axios.get("/getoutputimages").then((res) => {
-                    let outputImage = res.data
-                    console.log("Output Dta", outputImage)
-                    this.setState({
-                        outputImages: outputImage[0],
-                        loading: false,
-                        originalIMages: outputImage[1],
-                    })
-                })
-            }
-            else {
-                console.log('Something Went Wrong')
-            }
-        })
     }
     // Copy to ClipBoard
     copyColor(ev) {
