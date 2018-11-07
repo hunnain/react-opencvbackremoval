@@ -23,6 +23,14 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import './styles.css';
+import CardHeader from '@material-ui/core/CardHeader';
+import Collapse from '@material-ui/core/Collapse';
+import Avatar from '@material-ui/core/Avatar';
+import red from '@material-ui/core/colors/red';
+import FavoriteIcon from '@material-ui/icons/Favorite';
+import ShareIcon from '@material-ui/icons/Share';
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
+import MoreVertIcon from '@material-ui/icons/MoreVert';
 
 
 const thumbsContainer = {
@@ -69,7 +77,8 @@ class App extends Component {
             horizontalSnackbar: 'center',
             dialogOpen: false,
             deleteImage: undefined,
-            checking:undefined
+            checking:undefined,
+            uploadBtn : true,
         };
         this.uploadImage = this.uploadImage.bind(this);
         this.closeSnackbar = this.closeSnackbar.bind(this);
@@ -90,15 +99,34 @@ class App extends Component {
     }
     // ComponentDidmount 
     componentDidMount() {
-        axios.get("/getoutputimages").then((res) => {
+        var dataArray = []
+        let outputRGBArray = []
+        axios.get("/firebasedata").then((res) => {
             let outputImage = res.data
-            console.log("Output Dta didmount", outputImage)
-            this.setState({
-                outputImages: outputImage[0],
-                loading: false,
-                dialogOpen: false,
-                originalIMages: outputImage[1],
-            })
+            for (var k in outputImage) {
+                if (outputImage.hasOwnProperty(k)) {
+                    // Calculate Ratio of Image
+                    let inputRatio = outputImage[k].InputWidth / outputImage[k].InputHeight
+                    inputRatio = inputRatio.toFixed(2)
+                    let outputRatio = outputImage[k].Outputwidth /  outputImage[k].Outputheight
+                    outputRatio = outputRatio.toFixed(2)
+                    var dataObj = {
+                        inputimages : outputImage[k].inputimages,
+                        outputimages : outputImage[k].outputimages,
+                        key : k,
+                        inputRatio: inputRatio,
+                        outputRatio: outputRatio,
+                        outputRGBValue : outputImage[k].outputImageColor,
+                        inputRGBValue : outputImage[k].inputImageColor     
+                    }
+                    dataArray.push(dataObj)
+                    this.setState({
+                        outputImages: dataArray,
+                        loading: false,
+                        dialogOpen: false,
+                    })
+                }
+            }
         })
     }
     componentWillUnmount() {
@@ -111,9 +139,11 @@ class App extends Component {
     }
 
     uploadImage() {
+        const th = this;
         // Upload Images
         const files = this.state.files
-        const uploaders = files.map(file => {
+        var promise1 = new Promise(function(resolve, reject) {
+        const maping = files.map(file => {
             // Initial FormData
             console.log('IMP file', file.file)
             const formData = new FormData();
@@ -130,36 +160,56 @@ class App extends Component {
             }).then(response => {
                 const data = response.data;
                 if (data === "Loading") {
-                    this.setState({
-                        loading: true
-                    })
-                    axios.get("/processImage").then((res) => {
-                        this.setState({
-                            files: []
-                        })
-                        var data = res.data
-                        if (data) {
-                            axios.get("/getoutputimages").then((res) => {
-                                let outputImage = res.data
-                                console.log("Output Dta", outputImage)
-                                this.setState({
-                                    outputImages: outputImage[0],
-                                    loading: false,
-                                    originalIMages: outputImage[1],
-                                })
-                            })
-                        }
-                        else {
-                            console.log('Something Went Wrong')
-                        }
+                    th.setState({
+                        loading : true,
+                        uploadBtn : false, 
                     })
                 } else {
-                    this.setState({
+                    th.setState({
                         loading: false
                     })
                 }
             })
         });
+        resolve(maping);
+        });
+        promise1.then((value) =>{
+            axios.get("/processImage").then((res)=>{
+                let data = res.data
+                if (data) {
+                    var dataArray = []
+                    let outputRGBArray = []
+                    axios.get("/firebasedata").then((res) => {
+                        let outputImage = res.data
+                        for (var k in outputImage) {
+                            if (outputImage.hasOwnProperty(k)) {
+                                // Calculate Ratio of Image
+                                let inputRatio = outputImage[k].InputWidth / outputImage[k].InputHeight
+                                inputRatio = inputRatio.toFixed(2)
+                                let outputRatio = outputImage[k].Outputwidth /  outputImage[k].Outputheight
+                                outputRatio = outputRatio.toFixed(2)
+                                var dataObj = {
+                                    inputimages : outputImage[k].inputimages,
+                                    outputimages : outputImage[k].outputimages,
+                                    key : k,
+                                    inputRatio: inputRatio,
+                                    outputRatio: outputRatio,
+                                    outputRGBValue : outputImage[k].outputImageColor,
+                                    inputRGBValue : outputImage[k].inputImageColor     
+                                }
+                                dataArray.push(dataObj)
+                                this.setState({
+                                    outputImages: dataArray,
+                                    loading: false,
+                                    dialogOpen: false,
+                                })
+                            }
+                        }
+                    })
+                }
+            })
+        })
+
     }
     // Copy to ClipBoard
     copyColor(ev) {
@@ -191,9 +241,14 @@ class App extends Component {
     }
     //  Open Delete Image Dialaog
     deleteDialogOpen(ev) {
+        let deleteObj = {
+            inputimages : ev.inputimages,
+            outputimages : ev.outputimages,
+            key : ev.key 
+        }
         this.setState({
             dialogOpen: true,
-            deleteImage: ev
+            deleteImage: deleteObj
         })
     }
     // Close Delete Image Dialog
@@ -209,15 +264,34 @@ class App extends Component {
         axios.post(`/deleteimage`, { deleteIMageUrl }).then((res => {
             let data = res.data
             if (data) {
-                axios.get("/getoutputimages").then((res) => {
+                var dataArray = []
+                let outputRGBArray = []
+                axios.get("/firebasedata").then((res) => {
                     let outputImage = res.data
-                    console.log("Output Dta", outputImage)
-                    this.setState({
-                        outputImages: outputImage[0],
-                        loading: false,
-                        dialogOpen: false,
-                        originalIMages: outputImage[1]
-                    })
+                    for (var k in outputImage) {
+                        if (outputImage.hasOwnProperty(k)) {
+                            // Calculate Ratio of Image
+                            let inputRatio = outputImage[k].InputWidth / outputImage[k].InputHeight
+                            inputRatio = inputRatio.toFixed(2)
+                            let outputRatio = outputImage[k].Outputwidth /  outputImage[k].Outputheight
+                            outputRatio = outputRatio.toFixed(2)
+                            var dataObj = {
+                                inputimages : outputImage[k].inputimages,
+                                outputimages : outputImage[k].outputimages,
+                                key : k,
+                                inputRatio: inputRatio,
+                                outputRatio: outputRatio,
+                                outputRGBValue : outputImage[k].outputImageColor,
+                                inputRGBValue : outputImage[k].inputImageColor     
+                            }
+                            dataArray.push(dataObj)
+                            this.setState({
+                                outputImages: dataArray,
+                                loading: false,
+                                dialogOpen: false,
+                            })
+                        }
+                    }
                 })
             }
         }))
@@ -235,8 +309,8 @@ class App extends Component {
                 </div>
             </div>
         ));
-        const { loading, outputImages, openSnackbar, verticalSnackbar, horizontalSnackbar, originalIMages } = this.state
-        console.log('state data', this.state.outputImages)
+        const { loading, outputImages, openSnackbar, verticalSnackbar, horizontalSnackbar, originalIMages, uploadBtn } = this.state
+        console.log('state data', this.state)
         const path = "/dist/outputImages/outputImages/"
         const originalPath = "/dist/outputImages/originalImages/"
         return (
@@ -259,10 +333,18 @@ class App extends Component {
                         <aside style={thumbsContainer}>
                             {thumbs}
                         </aside>
-                        <Button variant="outlined" color="primary" id="uploadBtn" onClick={this.uploadImage}>
+                        {
+                            (uploadBtn)?
+                            <Button variant="outlined" color="primary" id="uploadBtn" onClick={this.uploadImage}>
                             Upload
                             <CloudUploadIcon />
-                        </Button>
+                            </Button>
+                            :
+                            <Button variant="outlined" color="primary" disabled id="uploadBtn">
+                            Upload
+                            <CloudUploadIcon />
+                            </Button>
+                        }
                     </section>
                     <Typography variant="h4" id="typogragphyOutput">
                         {
@@ -285,18 +367,18 @@ class App extends Component {
                                 {
                                     (outputImages) ?
                                         outputImages.map((val, key) => {
+                                            console.log('My vaues',val,key)
                                             return (
                                                 <div>
                                                 <GridList cellHeight={450} className="gridList">
-                                                        <Card className="card" key={key}>
-                                                            <CardActionArea>
+                                                        <Card className="card" raised={true} root key={key}>
                                                                 <CardMedia
                                                                     component="img"
                                                                     alt="Contemplative Reptile"
                                                                     className="media"
                                                                     height="240"
-                                                                    image={path + val.images}
-                                                                    title="Contemplative Reptile"
+                                                                    image={path + val.outputimages}
+                                                                    title="Output Images"
                                                                 />
                                                                 <CardContent>
                                                                 <Typography gutterBottom variant="h5" component="h2">
@@ -305,26 +387,23 @@ class App extends Component {
                                                                     <Typography gutterBottom variant="h6" component="h2">
                                                                         Color Plattee
                                                                 </Typography>
-                                                                    <ImagePalette image={path + val.images}>
-                                                                        {({ backgroundColor, color, alternativeColor }) => (
-                                                                            <div>
-                                                                                <Tooltip title={backgroundColor} placement="left">
-                                                                                    <span onClick={this.copyColor.bind(this, backgroundColor)} style={{ width: 30, height: 30, display: 'inline-block', backgroundColor: backgroundColor }}></span>
-                                                                                </Tooltip>
-                                                                                <Tooltip title={color} placement="top">
-                                                                                    <span onClick={this.copyColor.bind(this, color)} style={{ width: 30, height: 30, display: 'inline-block', backgroundColor: color }}></span>
-                                                                                </Tooltip>
-                                                                                <Tooltip title={alternativeColor} placement="right">
-                                                                                    <span onClick={this.copyColor.bind(this, alternativeColor)} style={{ width: 30, height: 30, display: 'inline-block', backgroundColor: alternativeColor }}></span>
+                                                                {
+                                                                    val.outputRGBValue.map((val,key)=>{
+                                                                        var rgbValues = `rgb(${val[0]},${val[1]},${val[2]})`
+                                                                      return(
+                                                                            <div style={{display: 'inline-block'}}>
+                                                                                <Tooltip title={rgbValues} placement="left">
+                                                                                    <span onClick={this.copyColor.bind(this, rgbValues)} style={{ width: 30, height: 30, display: 'inline-block', backgroundColor: rgbValues }}></span>
                                                                                 </Tooltip>
                                                                             </div>
-                                                                        )}
-                                                                    </ImagePalette>
-                                                                    <Typography variant="h6">Ratio:{val.ratio.toFixed(2)}</Typography>
+                                                                        // )}
+                                                                      )
+                                                                    })
+                                                                }
+                                                                    <Typography variant="h6">Ratio:{val.outputRatio}</Typography>
                                                                     <div>
                                                                     </div>
                                                                 </CardContent>
-                                                            </CardActionArea>
                                                             <CardActions>
                                                                 {/* Dialog */}
                                                                 <Dialog
@@ -343,31 +422,30 @@ class App extends Component {
                                                                         <Button onClick={this.deleteDialogClose} autoFocus color="primary">
                                                                             Close
                                                                     </Button>
-                                                                        <Button onClick={this.deleteImage.bind(this, val.images)} color="secondary">
+                                                                        <Button onClick={this.deleteImage.bind(this, val.outputimages)} color="secondary">
                                                                             Delete
                                                                     </Button>
                                                                     </DialogActions>
                                                                 </Dialog>
-                                                                <Button size="medium" onClick={this.imgShowTab.bind(this, path + val.images)} color="primary">
+                                                                <Button size="medium" onClick={this.imgShowTab.bind(this, path + val.outputimages)} color="primary">
                                                                     Preview
                                                             </Button>
                                                                 <Button size="small" color="primary">
-                                                                    <a href={path + val.images} download>Direct Download</a>
+                                                                    <a href={path + val.outputimages} download>Direct Download</a>
                                                                 </Button>
-                                                                <IconButton onClick={this.deleteDialogOpen.bind(this, val.images)} aria-label="Delete">
+                                                                <IconButton onClick={()=>this.deleteDialogOpen(val)} aria-label="Delete">
                                                                     <DeleteIcon />
                                                                 </IconButton>
                                                             </CardActions>
                                                         </Card>
                                                     {/* Original Image*/}
                                         <Card className="card">
-                                            <CardActionArea>
                                                 <CardMedia
                                                     component="img"
                                                     alt="Original Image"
                                                     className="media"
                                                     height="240"
-                                                    image={originalPath + originalIMages[key].originalimages}
+                                                    image={originalPath + val.inputimages}
                                                     title="Original Image"
                                                 />
                                                 <CardContent>
@@ -377,26 +455,23 @@ class App extends Component {
                                                     <Typography gutterBottom variant="h6" component="h2">
                                                         Color Plattee
                                                     </Typography>
-                                                    <ImagePalette image={originalPath + originalIMages[key].originalimages}>
-                                                        {({ backgroundColor, color, alternativeColor }) => (
-                                                            <div>
-                                                                <Tooltip title={backgroundColor} placement="left">
-                                                                    <span onClick={this.copyColor.bind(this, backgroundColor)} style={{ width: 30, height: 30, display: 'inline-block', backgroundColor: backgroundColor }}></span>
-                                                                </Tooltip>
-                                                                <Tooltip title={color} placement="top">
-                                                                    <span onClick={this.copyColor.bind(this, color)} style={{ width: 30, height: 30, display: 'inline-block', backgroundColor: color }}></span>
-                                                                </Tooltip>
-                                                                <Tooltip title={alternativeColor} placement="right">
-                                                                    <span onClick={this.copyColor.bind(this, alternativeColor)} style={{ width: 30, height: 30, display: 'inline-block', backgroundColor: alternativeColor }}></span>
-                                                                </Tooltip>
-                                                            </div>
-                                                        )}
-                                                    </ImagePalette>
-                                                    <Typography variant="h6">Ratio:{originalIMages[key].originalratio.toFixed(2)}</Typography>
+                                                    {
+                                                                    val.inputRGBValue.map((val,key)=>{
+                                                                        var rgbValues = `rgb(${val[0]},${val[1]},${val[2]})`
+                                                                      return(
+                                                                            <div style={{display: 'inline-block'}}>
+                                                                                <Tooltip title={rgbValues} placement="left">
+                                                                                    <span onClick={this.copyColor.bind(this, rgbValues)} style={{ width: 30, height: 30, display: 'inline-block', backgroundColor: rgbValues }}></span>
+                                                                                </Tooltip>
+                                                                            </div>
+                                                                        // )}
+                                                                      )
+                                                                    })
+                                                    }
+                                                    <Typography variant="h6">Ratio:{val.inputRatio}</Typography>
                                                     <div>
                                                     </div>
                                                 </CardContent>
-                                            </CardActionArea>
                                             <CardActions>
                                                 {/* Dialog */}
                                                 <Dialog
@@ -416,18 +491,18 @@ class App extends Component {
                                                         <Button onClick={this.deleteDialogClose} autoFocus color="primary">
                                                             Close
                                                         </Button>
-                                                        <Button onClick={this.deleteImage.bind(this, val.images)} color="secondary">
+                                                        <Button onClick={this.deleteImage.bind(this, val.inputimages)} color="secondary">
                                                             Delete
                                                         </Button>
                                                     </DialogActions>
                                                 </Dialog>
-                                                <Button size="medium" onClick={this.imgShowTab.bind(this, originalPath + originalIMages[key].originalimages)} color="primary">
+                                                <Button size="medium" onClick={this.imgShowTab.bind(this, originalPath + val.inputimages)} color="primary">
                                                     Preview
                                                 </Button>
                                                 <Button size="small" color="primary">
-                                                    <a href={originalPath + originalIMages[key].originalimages} download>Direct Download</a>
+                                                    <a href={originalPath + val.inputimages} download>Direct Download</a>
                                                 </Button>
-                                                <IconButton onClick={this.deleteDialogOpen.bind(this, val.images)} aria-label="Delete">
+                                                <IconButton onClick={()=>this.deleteDialogOpen(val)} aria-label="Delete">
                                                     <DeleteIcon />
                                                 </IconButton>
                                             </CardActions>
