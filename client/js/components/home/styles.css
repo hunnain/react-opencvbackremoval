@@ -31,6 +31,12 @@
     margin-left:1%;
 }
 
+
+.MuiCardActionArea-root-144:hover
+{
+    background-color: transparent !important;
+}
+
 #typogragphyOutput{
     margin-top:2%;
     display: block;
