@@ -7,6 +7,18 @@ from flask_uploads import UploadSet, configure_uploads, IMAGES, patch_request_cl
 import subprocess
 from PIL import Image
 from distutils.dir_util import copy_tree
+import firebase_admin
+from firebase_admin import credentials , db
+
+
+cred = credentials.Certificate("firebaseauth.json")
+# firebase_admin.initialize_app(cred)
+
+firebase_admin.initialize_app(options={
+    'databaseURL': 'https://opencvbgremove.firebaseio.com/'
+})
+
+opencvbgremove = db.reference('opencvbgremove')
 
 
 
@@ -48,6 +60,13 @@ def upload():
                 name=file.filename    
             )
     return "Loading"
+
+@app.route('/getimageuploadcount',methods=["GET"])
+def getuplodedimages():
+    uploadedImageDir = './uploads'
+    dirlength = len([name for name in os.listdir(uploadedImageDir) if os.path.isfile(os.path.join(uploadedImageDir, name))])
+    return jsonify(dirlength)
+
 
 # Process Image by OpenCV when Images Upload
 @app.route("/processImage",methods=["GET"])
@@ -103,15 +122,29 @@ def getOutputImages():
         originalImg.append(val)
     return jsonify(myImg,originalImg)
 
+
+@app.route("/firebasedata",methods=["GET"])
+def firebaseData():
+    ref = db.reference('opencvbgremove')
+    refData = ref.get()
+    for key, val in refData.items():
+            jsonVal = jsonify(val)
+            print('fecthing datatatat', val)
+            print('key',key)
+            return jsonVal
+
+
 @app.route("/deleteimage", methods=["POST"])
 def deleteImage():
     data = request.get_json(silent=True)
     data = data['deleteIMageUrl']
-    print('Data',data)
-    os.remove("../client/dist/outputImages/outputImages/{}".format(data))
-    data = data[:-4]
-    print("DATA FINAL ORIGI",data)
-    os.remove("../client/dist/outputImages/originalImages/{}".format(data))
+    print('Data',data['key'])
+    inputImage = data['inputimages']
+    outputImage = data['outputimages']
+    firebaseImageKey = data['key']
+    deleleteImageFirebase = db.reference('opencvbgremove/data/{}'.format(firebaseImageKey)).delete()
+    os.remove("../client/dist/outputImages/outputImages/{}".format(outputImage))
+    os.remove("../client/dist/outputImages/originalImages/{}".format(inputImage))
     return 'Delete'
 
 @app.route('/', defaults={'path': ''})
@@ -120,4 +153,4 @@ def catch_all(path):
     return render_template("index.html")
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0',port=5050)
+    app.run(host='0.0.0.0',debug=True,port=5050)
